@@ -163,14 +163,22 @@ async function loadExcel() {
   return await response.json()
 }
 
-function normalizeData(data) { {
+function normalizeData(data) {
 
   return data.map(row => {
 
-    const parts = row.Date.split('/')
+    const parts = String(row.Date || '01/01/2026').split('/')
+
+    const jsDate = new Date(
+      Number(parts[2]),
+      Number(parts[1]) - 1,
+      Number(parts[0])
+    )
 
     return {
+
       date: row.Date,
+
       qty: Number(row.Qty || 0),
 
       person: normalizeText(row.Person),
@@ -182,6 +190,7 @@ function normalizeData(data) { {
       partDisplay: row.Part || 'Unknown',
 
       week: Number(row.Week || 0),
+
       month: jsDate.getMonth() + 1
     }
   })
@@ -430,11 +439,71 @@ function renderBarChart(containerId, dataset, horizontal = false) {
   })
 }
 
-async function setInterval(() => {
+async function initDashboard() {
+
+  const rawData = await loadExcel()
+
+  const allData = normalizeData(rawData)
+
+  populateFilter('personFilter', [...new Set(allData.map(x => x.personDisplay))].sort())
+
+  populateFilter('machineFilter', [...new Set(allData.map(x => x.machineDisplay))].sort())
+
+  populateFilter('weekFilter', [...new Set(allData.map(x => x.week))].sort((a,b)=>a-b))
+
+  populateFilter('monthFilter', [...new Set(allData.map(x => x.month))].sort((a,b)=>a-b))
+
+  function refreshDashboard() {
+
+    const data = applyFilters(allData)
+
+    const totalQty = data.reduce((sum, row) => sum + row.qty, 0)
+
+    document.getElementById('totalQty').innerText = totalQty.toLocaleString()
+
+    const uniqueDays = [...new Set(data.map(x => x.date))]
+
+    const avg = Math.round(totalQty / Math.max(uniqueDays.length, 1))
+
+    document.getElementById('avgQty').innerText = avg + ' / day'
+
+    const personData = sumBy(data, 'personDisplay', 'qty')
+    const machineData = sumBy(data, 'machineDisplay', 'qty')
+    const partData = topN(sumBy(data, 'partDisplay', 'qty'))
+
+    const topPerson = Object.entries(personData)
+      .sort((a,b)=>b[1]-a[1])[0]
+
+    const topMachine = Object.entries(machineData)
+      .sort((a,b)=>b[1]-a[1])[0]
+
+    document.getElementById('topPerson').innerText = topPerson ? topPerson[0] : '-'
+    document.getElementById('topMachine').innerText = topMachine ? topMachine[0] : '-'
+
+    renderTrendChart(data)
+    renderLastFiveWeekChart(data)
+
+    renderBarChart('personChart', personData)
+    renderBarChart('machineChart', machineData)
+    renderBarChart('partChart', partData)
+  }
+
+  refreshDashboard()
+
+  ;['personFilter','machineFilter','weekFilter','monthFilter']
+    .forEach(id => {
+
+      document.getElementById(id)
+        .addEventListener('change', refreshDashboard)
+    })
+}
+
+setInterval(() => {
   location.reload()
 }, 300000)
 
-initDashboard() {
+initDashboard()
+ {
 
   const rawData = await loadExcel()
 
