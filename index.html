@@ -167,10 +167,10 @@ function normalizeData(data) {
 
   return data.map(row => {
 
-    const jsDate = new Date(row.Date)
+    const parts = row.Date.split('/')
 
     return {
-      date: excelDateToJSDate(excelDate),
+      date: row.Date,
       qty: Number(row.Qty || 0),
 
       person: normalizeText(row.Person),
