@@ -1,81 +1,158 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MT Dashboard V1</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
   <style>
-    body{
-      background:#020b2d;
-      color:white;
-      font-family:Arial,sans-serif;
+    body {
+      background: #020617;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    .glass {
+      background: rgba(15,23,42,0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
     }
   </style>
 </head>
 
-<body class="p-6">
+<body>
 
-<h1 class="text-5xl font-bold text-blue-400 mb-2">
-  MT INSPECTION
-</h1>
+<div class="flex">
 
-<p class="text-gray-300 mb-8">
-  Manufacturing Analytics Dashboard
-</p>
+  <div class="w-[260px] min-h-screen border-r border-slate-800 p-6 fixed left-0 top-0 bg-slate-950">
 
-<div class="grid grid-cols-4 gap-4 mb-8">
+    <div class="text-3xl font-black text-blue-400 mb-10">
+      MT DASHBOARD
+    </div>
 
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <div class="text-gray-400">Total Production</div>
-    <div id="totalProduction" class="text-5xl font-bold mt-2">0</div>
+    <div class="space-y-5">
+
+      <div>
+        <div class="text-sm text-slate-400 mb-2">Person</div>
+        <select id="personFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
+          <option value="All">All</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="text-sm text-slate-400 mb-2">Machine</div>
+        <select id="machineFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
+          <option value="All">All</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="text-sm text-slate-400 mb-2">Week</div>
+        <select id="weekFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
+          <option value="All">All</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="text-sm text-slate-400 mb-2">Month</div>
+        <select id="monthFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
+          <option value="All">All</option>
+        </select>
+      </div>
+
+    </div>
   </div>
 
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <div class="text-gray-400">Average / Day</div>
-    <div id="avgDay" class="text-5xl font-bold mt-2">0</div>
+  <div class="ml-[280px] p-8 w-full">
+
+    <div class="mb-10">
+      <div class="text-5xl font-black text-blue-400">
+        MT INSPECTION
+      </div>
+
+      <div class="text-slate-400 mt-2">
+        Manufacturing Analytics Dashboard
+      </div>
+    </div>
+
+    <div class="grid grid-cols-4 gap-6 mb-8">
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-slate-400 text-sm mb-3">Total Production</div>
+        <div id="totalQty" class="text-5xl font-black">0</div>
+      </div>
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-slate-400 text-sm mb-3">Average / Day</div>
+        <div id="avgQty" class="text-5xl font-black">0</div>
+      </div>
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-slate-400 text-sm mb-3">Top Person</div>
+        <div id="topPerson" class="text-4xl font-black">-</div>
+      </div>
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-slate-400 text-sm mb-3">Top Machine</div>
+        <div id="topMachine" class="text-4xl font-black">-</div>
+      </div>
+
+    </div>
+
+    
+    <div class="glass rounded-3xl p-6 mb-8">
+      <div class="text-2xl font-bold mb-6">Production Trend</div>
+      <div id="trendChart" style="height:420px"></div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-8 mb-8">
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-2xl font-bold mb-6">Last Five Week</div>
+        <div id="lastFiveWeekChart" style="height:320px"></div>
+      </div>
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-2xl font-bold mb-6">Top 10 Part</div>
+        <div id="partChart" style="height:320px"></div>
+      </div>
+
+    </div>
+
+    <div class="grid grid-cols-2 gap-8 mb-8">
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-2xl font-bold mb-6">By Person</div>
+        <div id="personChart" style="height:320px"></div>
+      </div>
+
+      <div class="glass rounded-3xl p-6">
+        <div class="text-2xl font-bold mb-6">By Machine</div>
+        <div id="machineChart" style="height:320px"></div>
+      </div>
+
+    </div>
+
   </div>
-
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <div class="text-gray-400">Top Person</div>
-    <div id="topPerson" class="text-3xl font-bold mt-2">-</div>
-  </div>
-
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <div class="text-gray-400">Top Machine</div>
-    <div id="topMachine" class="text-3xl font-bold mt-2">-</div>
-  </div>
-
-</div>
-
-<div class="grid grid-cols-2 gap-4">
-
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <h2 class="text-2xl font-bold mb-4">Last Five Week</h2>
-    <canvas id="weekChart"></canvas>
-  </div>
-
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <h2 class="text-2xl font-bold mb-4">Top 10 Part</h2>
-    <canvas id="partChart"></canvas>
-  </div>
-
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <h2 class="text-2xl font-bold mb-4">By Person</h2>
-    <canvas id="personChart"></canvas>
-  </div>
-
-  <div class="bg-[#07153a] p-6 rounded-3xl border border-blue-900">
-    <h2 class="text-2xl font-bold mb-4">By Machine</h2>
-    <canvas id="machineChart"></canvas>
-  </div>
-
 </div>
 
 <script>
+
+function normalizeText(value) {
+  return String(value || '').trim().toUpperCase()
+}
+
+function excelDateToJSDate(serial) {
+  const utc_days = Math.floor(serial - 25569)
+  const utc_value = utc_days * 86400
+  const date_info = new Date(utc_value * 1000)
+
+  return date_info.toISOString().split('T')[0]
+}
 
 async function loadExcel() {
 
@@ -89,103 +166,346 @@ async function loadExcel() {
   return await response.json()
 }
 
-function sumBy(data, key){
-  const map = {}
+function normalizeData(data) {
 
-  data.forEach(row => {
-    const name = row[key] || 'Unknown'
-    const qty = Number(row.Qty || 0)
+  return data.map(row => {
 
-    map[name] = (map[name] || 0) + qty
+    const parts = String(row.Date || '01/01/2026').split('/')
+
+    const jsDate = new Date(
+      Number(parts[2]),
+      Number(parts[1]) - 1,
+      Number(parts[0])
+    )
+
+    return {
+
+      date: row.Date,
+
+      qty: Number(row.Qty || 0),
+
+      person: normalizeText(row.Person),
+      personDisplay: row.Person || 'Unknown',
+
+      machine: normalizeText(row.Machine),
+      machineDisplay: row.Machine || 'Unknown',
+
+      partDisplay: row.Part || 'Unknown',
+
+      week: Number(row.Week || 0),
+
+      month: jsDate.getMonth() + 1
+    }
   })
-
-  return map
 }
 
-async function initDashboard(){
+function populateFilter(id, values) {
+
+  const select = document.getElementById(id)
+
+  values.forEach(value => {
+
+    const option = document.createElement('option')
+
+    option.value = value
+    option.textContent = value
+
+    select.appendChild(option)
+  })
+}
+
+function applyFilters(data) {
+
+  const person = normalizeText(document.getElementById('personFilter').value)
+  const machine = normalizeText(document.getElementById('machineFilter').value)
+  const week = document.getElementById('weekFilter').value
+  const month = document.getElementById('monthFilter').value
+
+  return data.filter(row => {
+
+    const personMatch = person === 'ALL' || row.person === person
+    const machineMatch = machine === 'ALL' || row.machine === machine
+    const weekMatch = week === 'All' || row.week == week
+    const monthMatch = month === 'All' || row.month == month
+
+    return personMatch && machineMatch && weekMatch && monthMatch
+  })
+}
+
+function sumBy(data, keyField, valueField) {
+
+  const result = {}
+
+  data.forEach(row => {
+
+    const key = row[keyField]
+    const value = Number(row[valueField] || 0)
+
+    result[key] = (result[key] || 0) + value
+  })
+
+  return result
+}
+
+function topN(dataset, limit = 10) {
+
+  return Object.fromEntries(
+    Object.entries(dataset)
+      .sort((a,b) => b[1] - a[1])
+      .slice(0, limit)
+  )
+}
+
+function renderTrendChart(data) {
+
+  const grouped = {}
+
+  data.forEach(row => {
+
+    if (!grouped[row.date]) {
+      grouped[row.date] = 0
+    }
+
+    grouped[row.date] += row.qty
+  })
+
+  const trend = Object.entries(grouped)
+    .map(([date, qty]) => ({ date, qty }))
+
+  const chart = echarts.init(document.getElementById('trendChart'))
+
+  chart.setOption({
+
+    backgroundColor: 'transparent',
+
+    tooltip: {
+      trigger: 'axis'
+    },
+
+    xAxis: {
+      type: 'category',
+      data: trend.map(x => x.date),
+      axisLabel: {
+        color: '#cbd5e1'
+      }
+    },
+
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        color: '#cbd5e1'
+      }
+    },
+
+    series: [{
+      data: trend.map(x => x.qty),
+      type: 'line',
+      smooth: true,
+      areaStyle: {},
+      lineStyle: {
+        width: 4,
+        color: '#3b82f6'
+      }
+    }]
+  })
+}
+
+
+function renderLastFiveWeekChart(data) {
+
+  const grouped = {}
+
+  data.forEach(row => {
+
+    if (!grouped[row.week]) {
+      grouped[row.week] = 0
+    }
+
+    grouped[row.week] += row.qty
+  })
+
+  const sortedWeeks = Object.entries(grouped)
+    .sort((a,b) => Number(a[0]) - Number(b[0]))
+
+  const last5 = sortedWeeks.slice(-5)
+
+  const labels = last5.map(x => `Week ${x[0]}`)
+  const values = last5.map(x => x[1])
+
+  const chart = echarts.init(document.getElementById('lastFiveWeekChart'))
+
+  chart.setOption({
+
+    backgroundColor: 'transparent',
+
+    tooltip: {
+      trigger: 'axis'
+    },
+
+    xAxis: {
+      type: 'category',
+      data: labels,
+      axisLabel: {
+        color: '#cbd5e1',
+        rotate: 25
+      }
+    },
+
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        color: '#cbd5e1'
+      }
+    },
+
+    series: [{
+      data: values,
+      type: 'bar',
+
+      label: {
+        show: true,
+        position: 'top',
+        color: '#ffffff'
+      },
+
+      itemStyle: {
+        color: '#3b82f6',
+        borderRadius: [10,10,0,0]
+      }
+    }]
+  })
+}
+
+
+function renderBarChart(containerId, dataset, horizontal = false) {
+
+  const chart = echarts.init(document.getElementById(containerId))
+
+  const sorted = Object.entries(dataset)
+    .sort((a,b) => b[1] - a[1])
+
+  const labels = sorted.map(x => x[0])
+  const values = sorted.map(x => x[1])
+
+  chart.setOption({
+
+    backgroundColor: 'transparent',
+
+    tooltip: {
+      trigger: 'axis'
+    },
+
+    xAxis: horizontal ? {
+      type: 'value',
+      axisLabel: {
+        color: '#cbd5e1'
+      }
+    } : {
+      type: 'category',
+      data: labels,
+      axisLabel: {
+        color: '#cbd5e1',
+        rotate: 35
+      }
+    },
+
+    yAxis: horizontal ? {
+      type: 'category',
+      data: labels,
+      axisLabel: {
+        color: '#cbd5e1'
+      }
+    } : {
+      type: 'value',
+      axisLabel: {
+        color: '#cbd5e1'
+      }
+    },
+
+    series: [{
+      data: values,
+      type: 'bar',
+
+      label: {
+        show: true,
+        position: horizontal ? 'right' : 'top',
+        color: '#ffffff'
+      },
+
+      itemStyle: {
+        color: '#3b82f6',
+        borderRadius: horizontal
+          ? [0,10,10,0]
+          : [10,10,0,0]
+      }
+    }]
+  })
+}
+
+async function initDashboard() {
 
   const rawData = await loadExcel()
 
-  const total = rawData.reduce((a,b)=>a+Number(b.Qty || 0),0)
+  const allData = normalizeData(rawData)
 
-  document.getElementById('totalProduction').innerText =
-    total.toLocaleString()
+  populateFilter('personFilter', [...new Set(allData.map(x => x.personDisplay))].sort())
 
-  const days = [...new Set(rawData.map(x=>x.Date))].length || 1
+  populateFilter('machineFilter', [...new Set(allData.map(x => x.machineDisplay))].sort())
 
-  document.getElementById('avgDay').innerText =
-    Math.round(total/days)
+  populateFilter('weekFilter', [...new Set(allData.map(x => x.week))].sort((a,b)=>a-b))
 
-  const personMap = sumBy(rawData,'Person')
-  const machineMap = sumBy(rawData,'Machine')
-  const weekMap = sumBy(rawData,'Week')
-  const partMap = sumBy(rawData,'Part')
+  populateFilter('monthFilter', [...new Set(allData.map(x => x.month))].sort((a,b)=>a-b))
 
-  const topPerson =
-    Object.entries(personMap).sort((a,b)=>b[1]-a[1])[0]
+  function refreshDashboard() {
 
-  const topMachine =
-    Object.entries(machineMap).sort((a,b)=>b[1]-a[1])[0]
+    const data = applyFilters(allData)
 
-  document.getElementById('topPerson').innerText =
-    topPerson ? topPerson[0] : '-'
+    const totalQty = data.reduce((sum, row) => sum + row.qty, 0)
 
-  document.getElementById('topMachine').innerText =
-    topMachine ? topMachine[0] : '-'
+    document.getElementById('totalQty').innerText = totalQty.toLocaleString()
 
-  new Chart(document.getElementById('weekChart'),{
-    type:'bar',
-    data:{
-      labels:Object.keys(weekMap).slice(-5),
-      datasets:[{
-        data:Object.values(weekMap).slice(-5)
-      }]
-    }
-  })
+    const uniqueDays = [...new Set(data.map(x => x.date))]
 
-  const topParts =
-    Object.entries(partMap)
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,10)
+    const avg = Math.round(totalQty / Math.max(uniqueDays.length, 1))
 
-  new Chart(document.getElementById('partChart'),{
-    type:'bar',
-    data:{
-      labels:topParts.map(x=>x[0]),
-      datasets:[{
-        data:topParts.map(x=>x[1])
-      }]
-    }
-  })
+    document.getElementById('avgQty').innerText = avg + ' / day'
 
-  new Chart(document.getElementById('personChart'),{
-    type:'bar',
-    data:{
-      labels:Object.keys(personMap),
-      datasets:[{
-        data:Object.values(personMap)
-      }]
-    }
-  })
+    const personData = sumBy(data, 'personDisplay', 'qty')
+    const machineData = sumBy(data, 'machineDisplay', 'qty')
+    const partData = topN(sumBy(data, 'partDisplay', 'qty'))
 
-  new Chart(document.getElementById('machineChart'),{
-    type:'bar',
-    data:{
-      labels:Object.keys(machineMap),
-      datasets:[{
-        data:Object.values(machineMap)
-      }]
-    }
-  })
+    const topPerson = Object.entries(personData)
+      .sort((a,b)=>b[1]-a[1])[0]
 
+    const topMachine = Object.entries(machineData)
+      .sort((a,b)=>b[1]-a[1])[0]
+
+    document.getElementById('topPerson').innerText = topPerson ? topPerson[0] : '-'
+    document.getElementById('topMachine').innerText = topMachine ? topMachine[0] : '-'
+
+    renderTrendChart(data)
+    renderLastFiveWeekChart(data)
+
+    renderBarChart('personChart', personData)
+    renderBarChart('machineChart', machineData)
+    renderBarChart('partChart', partData)
+  }
+
+  refreshDashboard()
+
+  ;['personFilter','machineFilter','weekFilter','monthFilter']
+    .forEach(id => {
+
+      document.getElementById(id)
+        .addEventListener('change', refreshDashboard)
+    })
 }
 
-initDashboard()
-
-setInterval(()=>{
+setInterval(() => {
   location.reload()
-},300000)
+}, 300000)
 
+initDashboard()
 </script>
 
 </body>
