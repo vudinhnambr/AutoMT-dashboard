@@ -144,12 +144,9 @@
           <input id="dateFilter" placeholder="Select date range" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" />
         </div>
 
-        <div class="grid grid-cols-2 gap-3 pt-2">
+        <div class="pt-2">
           <button id="resetFilters" type="button" class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-200 hover:border-blue-400 hover:text-white">
             Reset
-          </button>
-          <button id="exportCsv" type="button" class="rounded-xl bg-blue-500 px-4 py-3 text-sm font-bold text-white hover:bg-blue-400">
-            Export CSV
           </button>
         </div>
       </div>
@@ -226,32 +223,6 @@
         </div>
       </section>
 
-      <section class="glass rounded-2xl p-6">
-        <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div class="text-2xl font-bold">Detail Data</div>
-            <div class="mt-1 text-sm text-slate-400">Filtered rows from the current dashboard view</div>
-          </div>
-          <input id="tableSearch" placeholder="Search detail data" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white md:w-80" />
-        </div>
-
-        <div class="table-scroll rounded-xl border border-slate-800">
-          <table class="w-full min-w-[760px] border-collapse text-left text-sm">
-            <thead class="text-slate-300">
-              <tr>
-                <th class="px-4 py-3">Date</th>
-                <th class="px-4 py-3">Person</th>
-                <th class="px-4 py-3">Machine</th>
-                <th class="px-4 py-3">Part</th>
-                <th class="px-4 py-3 text-right">Qty</th>
-                <th class="px-4 py-3 text-right">Week</th>
-                <th class="px-4 py-3 text-right">Month</th>
-              </tr>
-            </thead>
-            <tbody id="detailTable" class="divide-y divide-slate-800 text-slate-200"></tbody>
-          </table>
-        </div>
-      </section>
     </main>
   </div>
 
@@ -531,45 +502,6 @@
       document.getElementById(id).innerText = value
     }
 
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-    }
-
-    function renderTable(data) {
-      const search = normalizeText(document.getElementById('tableSearch').value)
-      const tableRows = data
-        .filter(row => {
-          if (!search) return true
-
-          return [row.date, row.personDisplay, row.machineDisplay, row.partDisplay, row.qty, row.week, row.month]
-            .some(value => normalizeText(value).includes(search))
-        })
-        .slice(0, 500)
-
-      const html = tableRows.map(row => `
-        <tr class="hover:bg-slate-800/60">
-          <td class="px-4 py-3">${escapeHtml(row.date)}</td>
-          <td class="px-4 py-3">${escapeHtml(row.personDisplay)}</td>
-          <td class="px-4 py-3">${escapeHtml(row.machineDisplay)}</td>
-          <td class="px-4 py-3">${escapeHtml(row.partDisplay)}</td>
-          <td class="px-4 py-3 text-right font-bold text-white">${row.qty.toLocaleString()}</td>
-          <td class="px-4 py-3 text-right">${row.week}</td>
-          <td class="px-4 py-3 text-right">${row.month}</td>
-        </tr>
-      `).join('')
-
-      document.getElementById('detailTable').innerHTML = html || `
-        <tr>
-          <td colspan="7" class="px-4 py-8 text-center text-slate-400">No detail rows to show.</td>
-        </tr>
-      `
-    }
-
     function refreshDashboard() {
       filteredData = applyFilters(allData)
 
@@ -598,7 +530,6 @@
       renderBarChart('personChart', personData, false, { color: '#38bdf8' })
       renderBarChart('machineChart', machineData, false, { color: '#f59e0b' })
       renderBarChart('partChart', partData, true, { color: '#a78bfa' })
-      renderTable(filteredData)
     }
 
     function resetFilters() {
@@ -606,37 +537,12 @@
       document.getElementById('machineFilter').value = 'All'
       document.getElementById('weekFilter').value = 'All'
       document.getElementById('monthFilter').value = 'All'
-      document.getElementById('tableSearch').value = ''
 
       if (datePicker) {
         datePicker.clear()
       }
 
       refreshDashboard()
-    }
-
-    function exportCsv() {
-      const headers = ['Date', 'Person', 'Machine', 'Part', 'Qty', 'Week', 'Month']
-      const rows = filteredData.map(row => [
-        row.date,
-        row.personDisplay,
-        row.machineDisplay,
-        row.partDisplay,
-        row.qty,
-        row.week,
-        row.month
-      ])
-
-      const csv = [headers, ...rows]
-        .map(columns => columns.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
-        .join('\n')
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = `mt-dashboard-${Date.now()}.csv`
-      link.click()
-      URL.revokeObjectURL(link.href)
     }
 
     function showError(message) {
@@ -655,8 +561,6 @@
       })
 
       document.getElementById('resetFilters').addEventListener('click', resetFilters)
-      document.getElementById('exportCsv').addEventListener('click', exportCsv)
-      document.getElementById('tableSearch').addEventListener('input', () => renderTable(filteredData))
 
       window.addEventListener('resize', () => {
         Object.values(charts).forEach(chart => chart.resize())
