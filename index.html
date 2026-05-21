@@ -2,14 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MT Dashboard V1</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
   <style>
+    :root {
+      color-scheme: dark;
+    }
+
     body {
       background: #020617;
       color: white;
@@ -17,520 +22,680 @@
     }
 
     .glass {
-      background: rgba(15,23,42,0.75);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(10px);
     }
-  </style>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    .chart-box {
+      min-height: 320px;
+    }
+
+    .table-scroll {
+      max-height: 460px;
+      overflow: auto;
+    }
+
+    .table-scroll thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #0f172a;
+    }
+
+    .flatpickr-calendar {
+      background: #0f172a;
+      border: 1px solid #334155;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    }
+
+    .flatpickr-day,
+    .flatpickr-current-month,
+    .flatpickr-weekday,
+    .flatpickr-monthDropdown-months,
+    .numInput {
+      color: #e2e8f0 !important;
+    }
+
+    .flatpickr-day:hover,
+    .flatpickr-day.inRange {
+      background: #1d4ed8 !important;
+      border-color: #1d4ed8 !important;
+    }
+
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+      background: #3b82f6 !important;
+      border-color: #3b82f6 !important;
+    }
+
+    @media (max-width: 1024px) {
+      .app-shell {
+        display: block;
+      }
+
+      .sidebar {
+        position: static;
+        width: 100%;
+        min-height: auto;
+        border-right: 0;
+        border-bottom: 1px solid #1e293b;
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+    }
+  </style>
 </head>
 
-
 <body>
-
-<div class="flex">
-
-  <div class="w-[260px] min-h-screen border-r border-slate-800 p-6 fixed left-0 top-0 bg-slate-950">
-
-    <div class="text-3xl font-black text-blue-400 mb-10">
-      MT DASHBOARD
-    </div>
-
-    <div class="space-y-5">
-
-      <div>
-        <div class="text-sm text-slate-400 mb-2">Person</div>
-        <select id="personFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
-          <option value="All">All</option>
-        </select>
-      </div>
-
-      <div>
-        <div class="text-sm text-slate-400 mb-2">Machine</div>
-        <select id="machineFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
-          <option value="All">All</option>
-        </select>
-      </div>
-
-      <div>
-        <div class="text-sm text-slate-400 mb-2">Week</div>
-        <select id="weekFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
-          <option value="All">All</option>
-        </select>
-      </div>
-
-      <div>
-        <div class="text-sm text-slate-400 mb-2">Month</div>
-        <select id="monthFilter" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
-          <option value="All">All</option>
-        </select>
-      </div>
-
-      <div>
-        <div class="text-sm text-slate-400 mb-2">Date</div>
-        <input id="dateFilter"
-          placeholder="Select date"
-          class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white"/>
-      </div>
-
+  <div id="loadingOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950">
+    <div class="text-center">
+      <div class="mx-auto mb-5 h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-blue-400"></div>
+      <div class="text-xl font-bold text-white">Loading dashboard data</div>
+      <div class="mt-2 text-sm text-slate-400">Connecting to Google Sheet...</div>
     </div>
   </div>
 
-  <div class="ml-[280px] p-8 w-full">
+  <div id="toast" class="fixed right-6 top-6 z-40 hidden max-w-md rounded-xl border border-red-500/40 bg-red-950/90 px-5 py-4 text-sm text-red-100 shadow-2xl"></div>
 
-    <div class="mb-10">
-      <div class="text-5xl font-black text-blue-400">
-        MT INSPECTION
+  <div class="app-shell flex">
+    <aside class="sidebar fixed left-0 top-0 min-h-screen w-[280px] border-r border-slate-800 bg-slate-950 p-6">
+      <div class="mb-8">
+        <div class="text-3xl font-black text-blue-400">MT DASHBOARD</div>
+        <div id="lastUpdated" class="mt-2 text-xs text-slate-500">Last updated: -</div>
       </div>
 
-      <div class="text-slate-400 mt-2">
-        Manufacturing Analytics Dashboard
+      <div class="space-y-5">
+        <div>
+          <div class="mb-2 text-sm text-slate-400">Person</div>
+          <select id="personFilter" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+            <option value="All">All</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="mb-2 text-sm text-slate-400">Machine</div>
+          <select id="machineFilter" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+            <option value="All">All</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 lg:block lg:space-y-5">
+          <div>
+            <div class="mb-2 text-sm text-slate-400">Week</div>
+            <select id="weekFilter" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+              <option value="All">All</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="mb-2 text-sm text-slate-400">Month</div>
+            <select id="monthFilter" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+              <option value="All">All</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <div class="mb-2 text-sm text-slate-400">Date range</div>
+          <input id="dateFilter" placeholder="Select date range" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button id="resetFilters" type="button" class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-200 hover:border-blue-400 hover:text-white">
+            Reset
+          </button>
+          <button id="exportCsv" type="button" class="rounded-xl bg-blue-500 px-4 py-3 text-sm font-bold text-white hover:bg-blue-400">
+            Export CSV
+          </button>
+        </div>
       </div>
-    </div>
+    </aside>
 
-    <div class="grid grid-cols-4 gap-6 mb-8">
+    <main class="main-content ml-[300px] w-full p-5 md:p-8">
+      <header class="mb-8 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div class="text-4xl font-black text-blue-400 md:text-5xl">MT INSPECTION</div>
+          <div class="mt-2 text-slate-400">Manufacturing Analytics Dashboard</div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400">
+          Showing <span id="recordCount" class="font-bold text-white">0</span> records
+        </div>
+      </header>
 
-      <div class="glass rounded-3xl p-6">
-        <div class="text-slate-400 text-sm mb-3">Total Production</div>
-        <div id="totalQty" class="text-5xl font-black">0</div>
-      </div>
+      <section class="mb-8 grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-3 text-sm text-slate-400">Total Production</div>
+          <div id="totalQty" class="text-4xl font-black md:text-5xl">0</div>
+        </div>
 
-      <div class="glass rounded-3xl p-6">
-        <div class="text-slate-400 text-sm mb-3">Average / Day</div>
-        <div id="avgQty" class="text-5xl font-black">0</div>
-      </div>
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-3 text-sm text-slate-400">Average / Day</div>
+          <div id="avgQty" class="text-4xl font-black md:text-5xl">0</div>
+        </div>
 
-      <div class="glass rounded-3xl p-6">
-        <div class="text-slate-400 text-sm mb-3">Top Person</div>
-        <div id="topPerson" class="text-4xl font-black">-</div>
-      </div>
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-3 text-sm text-slate-400">Top Person</div>
+          <div id="topPerson" class="truncate text-3xl font-black md:text-4xl">-</div>
+          <div id="topPersonQty" class="mt-2 text-sm text-slate-400">0 pcs</div>
+        </div>
 
-      <div class="glass rounded-3xl p-6">
-        <div class="text-slate-400 text-sm mb-3">Top Machine</div>
-        <div id="topMachine" class="text-4xl font-black">-</div>
-      </div>
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-3 text-sm text-slate-400">Top Machine</div>
+          <div id="topMachine" class="truncate text-3xl font-black md:text-4xl">-</div>
+          <div id="topMachineQty" class="mt-2 text-sm text-slate-400">0 pcs</div>
+        </div>
+      </section>
 
-    </div>
+      <section id="emptyState" class="glass mb-8 hidden rounded-2xl p-6 text-center text-slate-300">
+        No data matches the selected filters.
+      </section>
 
-    
-    <div class="glass rounded-3xl p-6 mb-8">
-      <div class="text-2xl font-bold mb-6">Production Trend</div>
-      <div id="trendChart" style="height:420px"></div>
-    </div>
+      <section class="glass mb-8 rounded-2xl p-6">
+        <div class="mb-6 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div class="text-2xl font-bold">Production Trend</div>
+          <div class="text-sm text-slate-400">Sorted by production date</div>
+        </div>
+        <div id="trendChart" class="chart-box" style="height: 420px"></div>
+      </section>
 
-    <div class="grid grid-cols-2 gap-8 mb-8">
+      <section class="mb-8 grid grid-cols-1 gap-8 xl:grid-cols-2">
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-6 text-2xl font-bold">Last Five Week</div>
+          <div id="lastFiveWeekChart" class="chart-box"></div>
+        </div>
 
-      <div class="glass rounded-3xl p-6">
-        <div class="text-2xl font-bold mb-6">Last Five Week</div>
-        <div id="lastFiveWeekChart" style="height:320px"></div>
-      </div>
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-6 text-2xl font-bold">Top 10 Part</div>
+          <div id="partChart" class="chart-box"></div>
+        </div>
+      </section>
 
-      <div class="glass rounded-3xl p-6">
-        <div class="text-2xl font-bold mb-6">Top 10 Part</div>
-        <div id="partChart" style="height:320px"></div>
-      </div>
+      <section class="mb-8 grid grid-cols-1 gap-8 xl:grid-cols-2">
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-6 text-2xl font-bold">By Person</div>
+          <div id="personChart" class="chart-box"></div>
+        </div>
 
-    </div>
+        <div class="glass rounded-2xl p-6">
+          <div class="mb-6 text-2xl font-bold">By Machine</div>
+          <div id="machineChart" class="chart-box"></div>
+        </div>
+      </section>
 
-    <div class="grid grid-cols-2 gap-8 mb-8">
+      <section class="glass rounded-2xl p-6">
+        <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div class="text-2xl font-bold">Detail Data</div>
+            <div class="mt-1 text-sm text-slate-400">Filtered rows from the current dashboard view</div>
+          </div>
+          <input id="tableSearch" placeholder="Search detail data" class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white md:w-80" />
+        </div>
 
-      <div class="glass rounded-3xl p-6">
-        <div class="text-2xl font-bold mb-6">By Person</div>
-        <div id="personChart" style="height:320px"></div>
-      </div>
-
-      <div class="glass rounded-3xl p-6">
-        <div class="text-2xl font-bold mb-6">By Machine</div>
-        <div id="machineChart" style="height:320px"></div>
-      </div>
-
-    </div>
-
+        <div class="table-scroll rounded-xl border border-slate-800">
+          <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+            <thead class="text-slate-300">
+              <tr>
+                <th class="px-4 py-3">Date</th>
+                <th class="px-4 py-3">Person</th>
+                <th class="px-4 py-3">Machine</th>
+                <th class="px-4 py-3">Part</th>
+                <th class="px-4 py-3 text-right">Qty</th>
+                <th class="px-4 py-3 text-right">Week</th>
+                <th class="px-4 py-3 text-right">Month</th>
+              </tr>
+            </thead>
+            <tbody id="detailTable" class="divide-y divide-slate-800 text-slate-200"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
   </div>
-</div>
 
-<script>
+  <script>
+    const DATA_URL = 'https://opensheet.elk.sh/107zcI7KBOe0pAL0UchHiOgqDsQVaHrc9nc9HIl1h-fY/Sheet1'
+    const AUTO_RELOAD_MS = 300000
 
-function normalizeText(value) {
-  return String(value || '').trim().toUpperCase()
-}
+    const charts = {}
+    let allData = []
+    let filteredData = []
+    let datePicker = null
 
-function excelDateToJSDate(serial) {
-  const utc_days = Math.floor(serial - 25569)
-  const utc_value = utc_days * 86400
-  const date_info = new Date(utc_value * 1000)
-
-  return date_info.toISOString().split('T')[0]
-}
-
-async function loadExcel() {
-
-  const response = await fetch(
-    'https://opensheet.elk.sh/107zcI7KBOe0pAL0UchHiOgqDsQVaHrc9nc9HIl1h-fY/Sheet1',
-    {
-      cache: 'no-store'
-    }
-  )
-
-  return await response.json()
-}
-
-function normalizeData(data) {
-
-  return data.map(row => {
-
-    const parts = String(row.Date || '01/01/2026').split('/')
-
-    const jsDate = new Date(
-      Number(parts[2]),
-      Number(parts[1]) - 1,
-      Number(parts[0])
-    )
-
-    return {
-
-      date: row.Date,
-
-      qty: Number(row.Qty || 0),
-
-      person: normalizeText(row.Person),
-      personDisplay: row.Person || 'Unknown',
-
-      machine: normalizeText(row.Machine),
-      machineDisplay: row.Machine || 'Unknown',
-
-      partDisplay: row.Part || 'Unknown',
-
-      week: Number(row.Week || 0),
-
-      month: jsDate.getMonth() + 1
-    }
-  })
-}
-
-function populateFilter(id, values) {
-
-  const select = document.getElementById(id)
-
-  values.forEach(value => {
-
-    const option = document.createElement('option')
-
-    option.value = value
-    option.textContent = value
-
-    select.appendChild(option)
-  })
-}
-
-function applyFilters(data) {
-
-  const person = normalizeText(document.getElementById('personFilter').value)
-  const machine = normalizeText(document.getElementById('machineFilter').value)
-  const week = document.getElementById('weekFilter').value
-  const month = document.getElementById('monthFilter').value
-  const date = document.getElementById('dateFilter').value
-
-  return data.filter(row => {
-
-    const personMatch = person === 'ALL' || row.person === person
-    const machineMatch = machine === 'ALL' || row.machine === machine
-    const weekMatch = week === 'All' || row.week == week
-    const monthMatch = month === 'All' || row.month == month
-
-    const dateMatch =
-      !date ||
-      row.date === date
-
-    return personMatch && machineMatch && weekMatch && monthMatch && dateMatch
-  })
-}
-
-function sumBy(data, keyField, valueField) {
-
-  const result = {}
-
-  data.forEach(row => {
-
-    const key = row[keyField]
-    const value = Number(row[valueField] || 0)
-
-    result[key] = (result[key] || 0) + value
-  })
-
-  return result
-}
-
-function topN(dataset, limit = 10) {
-
-  return Object.fromEntries(
-    Object.entries(dataset)
-      .sort((a,b) => b[1] - a[1])
-      .slice(0, limit)
-  )
-}
-
-function renderTrendChart(data) {
-
-  const grouped = {}
-
-  data.forEach(row => {
-
-    if (!grouped[row.date]) {
-      grouped[row.date] = 0
+    function normalizeText(value) {
+      return String(value || '').trim().toUpperCase()
     }
 
-    grouped[row.date] += row.qty
-  })
+    function parseDate(value) {
+      if (!value) return null
 
-  const trend = Object.entries(grouped)
-    .map(([date, qty]) => ({ date, qty }))
-
-  const chart = echarts.init(document.getElementById('trendChart'))
-
-  chart.setOption({
-
-    backgroundColor: 'transparent',
-
-    tooltip: {
-      trigger: 'axis'
-    },
-
-    xAxis: {
-      type: 'category',
-      data: trend.map(x => x.date),
-      axisLabel: {
-        color: '#cbd5e1'
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return new Date(value.getFullYear(), value.getMonth(), value.getDate())
       }
-    },
 
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        color: '#cbd5e1'
+      if (typeof value === 'number') {
+        const utcDays = Math.floor(value - 25569)
+        const date = new Date(utcDays * 86400 * 1000)
+        return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
       }
-    },
 
-    series: [{
-      data: trend.map(x => x.qty),
-      type: 'line',
-      smooth: true,
-      areaStyle: {},
-      lineStyle: {
-        width: 4,
-        color: '#3b82f6'
+      const text = String(value).trim()
+      const slashParts = text.split('/')
+
+      if (slashParts.length === 3) {
+        const day = Number(slashParts[0])
+        const month = Number(slashParts[1]) - 1
+        const year = Number(slashParts[2])
+        const date = new Date(year, month, day)
+
+        if (!Number.isNaN(date.getTime())) return date
       }
-    }]
-  })
-}
 
-
-function renderLastFiveWeekChart(data) {
-
-  const grouped = {}
-
-  data.forEach(row => {
-
-    if (!grouped[row.week]) {
-      grouped[row.week] = 0
+      const fallback = new Date(text)
+      return Number.isNaN(fallback.getTime()) ? null : fallback
     }
 
-    grouped[row.week] += row.qty
-  })
+    function formatDate(date) {
+      if (!date) return ''
 
-  const sortedWeeks = Object.entries(grouped)
-    .sort((a,b) => Number(a[0]) - Number(b[0]))
+      return [
+        String(date.getDate()).padStart(2, '0'),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        date.getFullYear()
+      ].join('/')
+    }
 
-  const last5 = sortedWeeks.slice(-5)
+    function formatDateTime(date) {
+      return `${formatDate(date)} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    }
 
-  const labels = last5.map(x => `Week ${x[0]}`)
-  const values = last5.map(x => x[1])
+    async function loadExcel() {
+      const response = await fetch(DATA_URL, { cache: 'no-store' })
 
-  const chart = echarts.init(document.getElementById('lastFiveWeekChart'))
+      if (!response.ok) {
+        throw new Error(`Data request failed with status ${response.status}`)
+      }
 
-  chart.setOption({
+      return response.json()
+    }
 
-    backgroundColor: 'transparent',
+    function normalizeData(data) {
+      return data
+        .map(row => {
+          const parsedDate = parseDate(row.Date)
+          const displayDate = parsedDate ? formatDate(parsedDate) : String(row.Date || '').trim()
 
-    tooltip: {
-      trigger: 'axis'
-    },
+          return {
+            date: displayDate,
+            dateValue: parsedDate ? parsedDate.getTime() : 0,
+            qty: Number(row.Qty || 0),
+            person: normalizeText(row.Person),
+            personDisplay: row.Person || 'Unknown',
+            machine: normalizeText(row.Machine),
+            machineDisplay: row.Machine || 'Unknown',
+            part: normalizeText(row.Part),
+            partDisplay: row.Part || 'Unknown',
+            week: Number(row.Week || 0),
+            month: parsedDate ? parsedDate.getMonth() + 1 : 0
+          }
+        })
+        .sort((a, b) => a.dateValue - b.dateValue)
+    }
 
-    xAxis: {
-      type: 'category',
-      data: labels,
-      axisLabel: {
+    function populateFilter(id, values) {
+      const select = document.getElementById(id)
+      const currentValue = select.value
+
+      select.innerHTML = '<option value="All">All</option>'
+
+      values.forEach(value => {
+        if (value === '' || value === null || value === undefined) return
+
+        const option = document.createElement('option')
+        option.value = value
+        option.textContent = value
+        select.appendChild(option)
+      })
+
+      select.value = [...select.options].some(option => option.value === currentValue) ? currentValue : 'All'
+    }
+
+    function getDateRange() {
+      if (!datePicker || datePicker.selectedDates.length === 0) {
+        return { start: null, end: null }
+      }
+
+      const start = parseDate(datePicker.selectedDates[0])
+      const end = parseDate(datePicker.selectedDates[datePicker.selectedDates.length - 1])
+
+      if (end) {
+        end.setHours(23, 59, 59, 999)
+      }
+
+      return { start, end }
+    }
+
+    function applyFilters(data) {
+      const person = normalizeText(document.getElementById('personFilter').value)
+      const machine = normalizeText(document.getElementById('machineFilter').value)
+      const week = document.getElementById('weekFilter').value
+      const month = document.getElementById('monthFilter').value
+      const { start, end } = getDateRange()
+
+      return data.filter(row => {
+        const personMatch = person === 'ALL' || row.person === person
+        const machineMatch = machine === 'ALL' || row.machine === machine
+        const weekMatch = week === 'All' || row.week === Number(week)
+        const monthMatch = month === 'All' || row.month === Number(month)
+        const dateMatch = !start || !end || (row.dateValue >= start.getTime() && row.dateValue <= end.getTime())
+
+        return personMatch && machineMatch && weekMatch && monthMatch && dateMatch
+      })
+    }
+
+    function sumBy(data, keyField, valueField) {
+      return data.reduce((result, row) => {
+        const key = row[keyField]
+        const value = Number(row[valueField] || 0)
+        result[key] = (result[key] || 0) + value
+        return result
+      }, {})
+    }
+
+    function topN(dataset, limit = 10) {
+      return Object.fromEntries(
+        Object.entries(dataset)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, limit)
+      )
+    }
+
+    function getChart(containerId) {
+      if (!charts[containerId]) {
+        charts[containerId] = echarts.init(document.getElementById(containerId))
+      }
+
+      return charts[containerId]
+    }
+
+    function baseTextStyle() {
+      return {
         color: '#cbd5e1',
-        rotate: 25
+        fontFamily: 'Arial, sans-serif'
       }
-    },
+    }
 
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        color: '#cbd5e1'
+    function renderTrendChart(data) {
+      const grouped = {}
+
+      data.forEach(row => {
+        if (!grouped[row.date]) {
+          grouped[row.date] = { qty: 0, dateValue: row.dateValue }
+        }
+
+        grouped[row.date].qty += row.qty
+      })
+
+      const trend = Object.entries(grouped)
+        .map(([date, item]) => ({ date, qty: item.qty, dateValue: item.dateValue }))
+        .sort((a, b) => a.dateValue - b.dateValue)
+
+      getChart('trendChart').setOption({
+        backgroundColor: 'transparent',
+        textStyle: baseTextStyle(),
+        grid: { left: 44, right: 18, top: 28, bottom: 64 },
+        tooltip: { trigger: 'axis' },
+        xAxis: {
+          type: 'category',
+          data: trend.map(x => x.date),
+          axisLabel: { color: '#cbd5e1', rotate: 35 }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: '#cbd5e1' },
+          splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.18)' } }
+        },
+        series: [{
+          data: trend.map(x => x.qty),
+          type: 'line',
+          smooth: true,
+          areaStyle: { color: 'rgba(59, 130, 246, 0.22)' },
+          lineStyle: { width: 4, color: '#3b82f6' },
+          symbolSize: 8
+        }]
+      }, true)
+    }
+
+    function renderLastFiveWeekChart(data) {
+      const grouped = sumBy(data, 'week', 'qty')
+      const last5 = Object.entries(grouped)
+        .filter(([week]) => Number(week) > 0)
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .slice(-5)
+
+      renderBarChart('lastFiveWeekChart', Object.fromEntries(last5), false, {
+        labelPrefix: 'Week ',
+        color: '#22c55e'
+      })
+    }
+
+    function renderBarChart(containerId, dataset, horizontal = false, options = {}) {
+      const sorted = Object.entries(dataset).sort((a, b) => b[1] - a[1])
+      const labels = sorted.map(x => `${options.labelPrefix || ''}${x[0]}`)
+      const values = sorted.map(x => x[1])
+
+      getChart(containerId).setOption({
+        backgroundColor: 'transparent',
+        textStyle: baseTextStyle(),
+        grid: horizontal
+          ? { left: 112, right: 42, top: 20, bottom: 32 }
+          : { left: 44, right: 18, top: 24, bottom: 76 },
+        tooltip: { trigger: 'axis' },
+        xAxis: horizontal ? {
+          type: 'value',
+          axisLabel: { color: '#cbd5e1' },
+          splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.18)' } }
+        } : {
+          type: 'category',
+          data: labels,
+          axisLabel: { color: '#cbd5e1', rotate: 35 }
+        },
+        yAxis: horizontal ? {
+          type: 'category',
+          data: labels,
+          axisLabel: { color: '#cbd5e1' }
+        } : {
+          type: 'value',
+          axisLabel: { color: '#cbd5e1' },
+          splitLine: { lineStyle: { color: 'rgba(148, 163, 184, 0.18)' } }
+        },
+        series: [{
+          data: values,
+          type: 'bar',
+          label: {
+            show: true,
+            position: horizontal ? 'right' : 'top',
+            color: '#ffffff'
+          },
+          itemStyle: {
+            color: options.color || '#3b82f6',
+            borderRadius: horizontal ? [0, 10, 10, 0] : [10, 10, 0, 0]
+          }
+        }]
+      }, true)
+    }
+
+    function setMetric(id, value) {
+      document.getElementById(id).innerText = value
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+    }
+
+    function renderTable(data) {
+      const search = normalizeText(document.getElementById('tableSearch').value)
+      const tableRows = data
+        .filter(row => {
+          if (!search) return true
+
+          return [row.date, row.personDisplay, row.machineDisplay, row.partDisplay, row.qty, row.week, row.month]
+            .some(value => normalizeText(value).includes(search))
+        })
+        .slice(0, 500)
+
+      const html = tableRows.map(row => `
+        <tr class="hover:bg-slate-800/60">
+          <td class="px-4 py-3">${escapeHtml(row.date)}</td>
+          <td class="px-4 py-3">${escapeHtml(row.personDisplay)}</td>
+          <td class="px-4 py-3">${escapeHtml(row.machineDisplay)}</td>
+          <td class="px-4 py-3">${escapeHtml(row.partDisplay)}</td>
+          <td class="px-4 py-3 text-right font-bold text-white">${row.qty.toLocaleString()}</td>
+          <td class="px-4 py-3 text-right">${row.week}</td>
+          <td class="px-4 py-3 text-right">${row.month}</td>
+        </tr>
+      `).join('')
+
+      document.getElementById('detailTable').innerHTML = html || `
+        <tr>
+          <td colspan="7" class="px-4 py-8 text-center text-slate-400">No detail rows to show.</td>
+        </tr>
+      `
+    }
+
+    function refreshDashboard() {
+      filteredData = applyFilters(allData)
+
+      const totalQty = filteredData.reduce((sum, row) => sum + row.qty, 0)
+      const uniqueDays = [...new Set(filteredData.map(x => x.date))]
+      const avg = Math.round(totalQty / Math.max(uniqueDays.length, 1))
+      const personData = sumBy(filteredData, 'personDisplay', 'qty')
+      const machineData = sumBy(filteredData, 'machineDisplay', 'qty')
+      const partData = topN(sumBy(filteredData, 'partDisplay', 'qty'))
+      const topPerson = Object.entries(personData).sort((a, b) => b[1] - a[1])[0]
+      const topMachine = Object.entries(machineData).sort((a, b) => b[1] - a[1])[0]
+      const hasData = filteredData.length > 0
+
+      setMetric('totalQty', totalQty.toLocaleString())
+      setMetric('avgQty', `${avg.toLocaleString()} / day`)
+      setMetric('topPerson', topPerson ? topPerson[0] : '-')
+      setMetric('topPersonQty', topPerson ? `${topPerson[1].toLocaleString()} pcs` : '0 pcs')
+      setMetric('topMachine', topMachine ? topMachine[0] : '-')
+      setMetric('topMachineQty', topMachine ? `${topMachine[1].toLocaleString()} pcs` : '0 pcs')
+      setMetric('recordCount', filteredData.length.toLocaleString())
+
+      document.getElementById('emptyState').classList.toggle('hidden', hasData)
+
+      renderTrendChart(filteredData)
+      renderLastFiveWeekChart(filteredData)
+      renderBarChart('personChart', personData, false, { color: '#38bdf8' })
+      renderBarChart('machineChart', machineData, false, { color: '#f59e0b' })
+      renderBarChart('partChart', partData, true, { color: '#a78bfa' })
+      renderTable(filteredData)
+    }
+
+    function resetFilters() {
+      document.getElementById('personFilter').value = 'All'
+      document.getElementById('machineFilter').value = 'All'
+      document.getElementById('weekFilter').value = 'All'
+      document.getElementById('monthFilter').value = 'All'
+      document.getElementById('tableSearch').value = ''
+
+      if (datePicker) {
+        datePicker.clear()
       }
-    },
 
-    series: [{
-      data: values,
-      type: 'bar',
+      refreshDashboard()
+    }
 
-      label: {
-        show: true,
-        position: 'top',
-        color: '#ffffff'
-      },
+    function exportCsv() {
+      const headers = ['Date', 'Person', 'Machine', 'Part', 'Qty', 'Week', 'Month']
+      const rows = filteredData.map(row => [
+        row.date,
+        row.personDisplay,
+        row.machineDisplay,
+        row.partDisplay,
+        row.qty,
+        row.week,
+        row.month
+      ])
 
-      itemStyle: {
-        color: '#3b82f6',
-        borderRadius: [10,10,0,0]
+      const csv = [headers, ...rows]
+        .map(columns => columns.map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `mt-dashboard-${Date.now()}.csv`
+      link.click()
+      URL.revokeObjectURL(link.href)
+    }
+
+    function showError(message) {
+      const toast = document.getElementById('toast')
+      toast.innerText = message
+      toast.classList.remove('hidden')
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').classList.add('hidden')
+    }
+
+    function bindEvents() {
+      ;['personFilter', 'machineFilter', 'weekFilter', 'monthFilter'].forEach(id => {
+        document.getElementById(id).addEventListener('change', refreshDashboard)
+      })
+
+      document.getElementById('resetFilters').addEventListener('click', resetFilters)
+      document.getElementById('exportCsv').addEventListener('click', exportCsv)
+      document.getElementById('tableSearch').addEventListener('input', () => renderTable(filteredData))
+
+      window.addEventListener('resize', () => {
+        Object.values(charts).forEach(chart => chart.resize())
+      })
+    }
+
+    async function initDashboard() {
+      try {
+        datePicker = flatpickr('#dateFilter', {
+          mode: 'range',
+          dateFormat: 'd/m/Y',
+          allowInput: false,
+          onChange: refreshDashboard
+        })
+
+        const rawData = await loadExcel()
+        allData = normalizeData(rawData)
+
+        populateFilter('personFilter', [...new Set(allData.map(x => x.personDisplay))].sort())
+        populateFilter('machineFilter', [...new Set(allData.map(x => x.machineDisplay))].sort())
+        populateFilter('weekFilter', [...new Set(allData.map(x => x.week))].filter(Boolean).sort((a, b) => a - b))
+        populateFilter('monthFilter', [...new Set(allData.map(x => x.month))].filter(Boolean).sort((a, b) => a - b))
+
+        bindEvents()
+        refreshDashboard()
+        setMetric('lastUpdated', `Last updated: ${formatDateTime(new Date())}`)
+      } catch (error) {
+        console.error(error)
+        showError('Unable to load dashboard data. Please check the Google Sheet connection or try again later.')
+      } finally {
+        hideLoading()
       }
-    }]
-  })
-}
+    }
 
+    setInterval(() => {
+      location.reload()
+    }, AUTO_RELOAD_MS)
 
-function renderBarChart(containerId, dataset, horizontal = false) {
-
-  const chart = echarts.init(document.getElementById(containerId))
-
-  const sorted = Object.entries(dataset)
-    .sort((a,b) => b[1] - a[1])
-
-  const labels = sorted.map(x => x[0])
-  const values = sorted.map(x => x[1])
-
-  chart.setOption({
-
-    backgroundColor: 'transparent',
-
-    tooltip: {
-      trigger: 'axis'
-    },
-
-    xAxis: horizontal ? {
-      type: 'value',
-      axisLabel: {
-        color: '#cbd5e1'
-      }
-    } : {
-      type: 'category',
-      data: labels,
-      axisLabel: {
-        color: '#cbd5e1',
-        rotate: 35
-      }
-    },
-
-    yAxis: horizontal ? {
-      type: 'category',
-      data: labels,
-      axisLabel: {
-        color: '#cbd5e1'
-      }
-    } : {
-      type: 'value',
-      axisLabel: {
-        color: '#cbd5e1'
-      }
-    },
-
-    series: [{
-      data: values,
-      type: 'bar',
-
-      label: {
-        show: true,
-        position: horizontal ? 'right' : 'top',
-        color: '#ffffff'
-      },
-
-      itemStyle: {
-        color: '#3b82f6',
-        borderRadius: horizontal
-          ? [0,10,10,0]
-          : [10,10,0,0]
-      }
-    }]
-  })
-}
-
-async function initDashboard() {
-
-  const rawData = await loadExcel()
-
-  const allData = normalizeData(rawData)
-
-  populateFilter('personFilter', [...new Set(allData.map(x => x.personDisplay))].sort())
-
-  populateFilter('machineFilter', [...new Set(allData.map(x => x.machineDisplay))].sort())
-
-  populateFilter('weekFilter', [...new Set(allData.map(x => x.week))].sort((a,b)=>a-b))
-
-  populateFilter('monthFilter', [...new Set(allData.map(x => x.month))].sort((a,b)=>a-b))
-
-  function refreshDashboard() {
-
-    const data = applyFilters(allData)
-
-    const totalQty = data.reduce((sum, row) => sum + row.qty, 0)
-
-    document.getElementById('totalQty').innerText = totalQty.toLocaleString()
-
-    const uniqueDays = [...new Set(data.map(x => x.date))]
-
-    const avg = Math.round(totalQty / Math.max(uniqueDays.length, 1))
-
-    document.getElementById('avgQty').innerText = avg + ' / day'
-
-    const personData = sumBy(data, 'personDisplay', 'qty')
-    const machineData = sumBy(data, 'machineDisplay', 'qty')
-    const partData = topN(sumBy(data, 'partDisplay', 'qty'))
-
-    const topPerson = Object.entries(personData)
-      .sort((a,b)=>b[1]-a[1])[0]
-
-    const topMachine = Object.entries(machineData)
-      .sort((a,b)=>b[1]-a[1])[0]
-
-    document.getElementById('topPerson').innerText = topPerson ? topPerson[0] : '-'
-    document.getElementById('topMachine').innerText = topMachine ? topMachine[0] : '-'
-
-    renderTrendChart(data)
-    renderLastFiveWeekChart(data)
-
-    renderBarChart('personChart', personData)
-    renderBarChart('machineChart', machineData)
-    renderBarChart('partChart', partData)
-  }
-
-
-  flatpickr("#dateFilter", {
-    dateFormat: "d/m/Y",
-    allowInput: false,
-    onChange: refreshDashboard
-  })
-
-  refreshDashboard()
-
-  ;['personFilter','machineFilter','weekFilter','monthFilter']
-
-    .forEach(id => {
-
-      document.getElementById(id)
-        .addEventListener('change', refreshDashboard)
-    })
-}
-
-setInterval(() => {
-  location.reload()
-}, 300000)
-
-initDashboard()
-</script>
-
+    initDashboard()
+  </script>
 </body>
 </html>
